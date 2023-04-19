@@ -68,3 +68,27 @@ app.get("/stream/:videoName", (req, res) => {
     fileStream.pipe(res);
   }
 });
+
+
+// Handle video download
+app.get('/download/:videoName', (req, res) => {
+  const videoName = req.params.videoName;
+  const videoPath = path.join(__dirname, 'videos', videoName);
+
+  // Check if video file exists
+  if (!fs.existsSync(videoPath)) {
+    return res.status(404).send('Video not found');
+  }
+
+  // Set the response headers for downloading the video file
+  res.setHeader('Content-disposition', `attachment; filename=${videoName}`);
+  res.setHeader('Content-Type', 'video/mp4');
+
+  // Stream the video file to the client
+  const fileStream = fs.createReadStream(videoPath);
+  fileStream.pipe(res);
+});
+
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
