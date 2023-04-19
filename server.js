@@ -23,3 +23,48 @@ app.post("/upload", (req, res) => {
 });
 
 //Video Streaming
+
+app.get("/stream/:videoName", (req, res) => {
+  const videoName = req.params.videoName;
+  const videoPath = path.join(__dirname, "videos", videoName);
+
+  // Check if video file exists
+  if (!fs.existsSync(videoPath)) {
+    return res.status(404).send("Video not found");
+  }
+
+  // Get video stats (file size, etc.)
+  const stat = fs.statSync(videoPath);
+  const fileSize = stat.size;
+  const range = req.headers.range;
+
+  if (range) {
+    // If a range header is present, parse it
+    const parts = range.replace(/bytes=/, "").split("-");
+    const start = parseInt(parts[0], 10);
+    const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+
+    // Calculate the chunk size and create the response headers
+    const chunksize = end - start + 1;
+    const headers = {
+      "Content-Range": `bytes ${start}-${end}/${fileSize}`,
+      "Accept-Ranges": "bytes",
+      "Content-Length": chunksize,
+      "Content-Type": "video/mp4",
+    };
+
+    // Set the response headers and stream the video file
+    res.writeHead(206, headers);
+    const fileStream = fs.createReadStream(videoPath, { start, end });
+    fileStream.pipe(res);
+  } else {
+    // If no range header is present, set the response headers and stream the entire video file
+    const headers = {
+      "Content-Length": fileSize,
+      "Content-Type": "video/mp4",
+    };
+    res.writeHead(200, headers);
+    const fileStream = fs.createReadStream(videoPath);
+    fileStream.pipe(res);
+  }
+});
